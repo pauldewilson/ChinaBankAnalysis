@@ -1,7 +1,7 @@
 """
 Main connection to SQL Server for use throughout
 """
-import pyodbc
+from sqlalchemy import create_engine
 from .settings import SQL_CONNECTION_STRING
 
 
@@ -11,5 +11,5 @@ class ServerConnection:
     """
 
     def __init__(self):
-        self.connection = pyodbc.connect(SQL_CONNECTION_STRING) # for use in pandas connections
-        self.cursor = self.connection.cursor() # for use in ad-hoc queries if necessary
+        self.engine = create_engine(SQL_CONNECTION_STRING) # for use in pandas connections
+        self.connection = self.engine.connect() # for use in ad-hoc queries if necessary
