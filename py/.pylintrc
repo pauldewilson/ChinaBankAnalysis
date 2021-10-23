@@ -89,7 +89,9 @@ disable=raw-checker-failed,
         anomalous-backslash-in-string,
         c-extension-no-member,
         too-few-public-methods,
-        relative-beyond-top-level
+        relative-beyond-top-level,
+        too-many-function-args,
+        invalid-name
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

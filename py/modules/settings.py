@@ -1,6 +1,7 @@
 """
 Global settings file
 """
+import os
 from sqlalchemy.engine import URL
 
 # SQL Server Connection Properties
@@ -20,3 +21,22 @@ SQL_CONNECTION_STRING = URL.create(
         "authentication": "ActiveDirectoryIntegrated",
     }
 )
+
+def list_parent_and_subdirs(rootdir):
+    """
+    Recursively returns all subdirectories of provided rootdir
+    For use in SCRAPER_TARGET_DIRECTORIES if required
+    """
+    dirs = [rootdir]
+    for file in os.listdir(rootdir):
+        d = os.path.join(rootdir, file)
+        if os.path.isdir(d):
+            dirs.append(d)
+            list_parent_and_subdirs(d)
+    return dirs
+
+# Scraper settings
+SCRAPER_VALID_FILETYPES = ['xlsx', 'xlsm']
+SCRAPER_TARGET_DIRECTORIES = [r'C:\Users\me\Desktop\test\scraper']
+SCRAPER_TOTAL_COLUMNS = 300
+SCRAPER_TOTAL_ROWS = 1000
