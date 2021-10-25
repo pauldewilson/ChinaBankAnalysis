@@ -95,6 +95,23 @@ class Scraper:
                         # create df of worksheet data
                         df_data = pd.DataFrame(data=data)
                         df_data.columns = self.target_excel_columns
+                        # filter out non used rows from df_data (could save thousands of rows of nulls)
+                        # keep at least one row
+                        max_used_row_n = 1
+                        # iterate over each column
+                        for col in df_data.columns:
+                            # create a series of the given data where NaN is excluded
+                            series = df_data[df_data[col].isna() == False][col]
+                            # take max number from series index
+                            try:
+                                series_index = series.index[-1]
+                            except IndexError:
+                                series_index = 0
+                            # if series index > than existing max then replace
+                            if series_index > max_used_row_n:
+                                max_used_row_n = series_index
+                        # filter out unused rows (adding 1 row as a failsafe)
+                        df_data = df_data.iloc[0:max_used_row_n+1, ::]
                         # create df of metadata
                         df_meta = pd.DataFrame(
                             data={
@@ -139,6 +156,8 @@ class Scraper:
                     WHERE upload_number = 0
                     """
                     self.sql_connection.execute(sql_update_statement)
-                except IndexError:
+                # except IndexError:
+                except Exception as ex:
                     print(f"Error: {folder}\\{workbook}")
+                    print(ex)
                     pass
