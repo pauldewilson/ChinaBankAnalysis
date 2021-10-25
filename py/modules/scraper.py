@@ -156,7 +156,6 @@ class Scraper:
                     WHERE upload_number = 0
                     """
                     self.sql_connection.execute(sql_update_statement)
-                # except IndexError:
                 except Exception as ex:
                     print(f"Error: {folder}\\{workbook}")
                     print(ex)
