@@ -49,7 +49,20 @@ class Scraper:
         """
         return [f for f in os.listdir(directory)\
             if f.lower().split('.')[-1] in SCRAPER_VALID_FILETYPES]
+    
+    @staticmethod
+    def set_none_as_null(cell_value):
+        """
+        Each cell.value must be passed as string else numeric values
+        lose accuracy however this makes null cells str value "None".
+        This function returns None if "None" ensuring NULL in SQL Server.
+        """
+        if cell_value == "None":
+            return None
+        else:
+            return cell_value
 
+        
     def scrape_to_sql(self):
         """
         Scrapes target excel docs from given directories according to set ranges
@@ -60,68 +73,72 @@ class Scraper:
         for folder in SCRAPER_TARGET_DIRECTORIES:
             # iterate within all valid workbooks within folder
             for workbook in self.return_workbooks(folder):
-                # load workbook as data only (otherwise formulae are returned instead of values)
-                wb = load_workbook(folder+"\\"+workbook, data_only=True)
-                # create datalist for cell values
-                data = []
-                # iterate over every worksheet within wb
-                for ws in wb.worksheets:
-                    # generate target range to be extracted from each sheet (ex. A1:C10)
-                    # first cell to scrape from ex. A1
-                    cell_start = 'A1'
-                    # last cell to scrape from ex. KN1000
-                    cell_end = f'{self.target_excel_columns[-1]}{SCRAPER_TOTAL_ROWS}'
-                    # ex. A1:KN1000
-                    cell_range = f'{cell_start}:{cell_end}'
-                    # select rows from Worksheet object
-                    rows = ws[cell_range]
-                    # iterate over every row and add cell value to data list
-                    for row in rows:
-                        data.append([cell.value for cell in row])
-                    # create df of worksheet data
-                    df_data = pd.DataFrame(data=data)
-                    df_data.columns = self.target_excel_columns
-                    # create df of metadata
-                    df_meta = pd.DataFrame(
-                        data={
-                            'is_processed':0,
-                            'upload_number':0,
-                            'workbook_name':workbook,
-                            'worksheet_name':ws.title,
-                            'row_n':0,
-                            'source_dir':folder,
-                        },
-                        index=[0]
-                    )
-                    # concat meta and data dfs
-                    df_concat = pd.concat([df_meta, df_data])
-                    # infill NaN cells of df_concat with metadata
-                    df_concat['is_processed'] = 0
-                    df_concat['upload_number'] = 0
-                    df_concat['source_dir'] = folder
-                    df_concat['workbook_name'] = workbook
-                    df_concat['worksheet_name'] = ws.title
-                    df_concat['row_n'] = list(range(df_concat.shape[0]))
-                    df_concat['source_dir'] = folder
-                    # remove 0th (blank generated) row
-                    df_concat = df_concat.iloc[1::, ::]
-                    # send df to sql
-                    df_concat.to_sql(
-                        name='Worksheets',
-                        schema='landing',
-                        index=False,
-                        con=self.sql_connection,
-                        if_exists='append'
-                    )
-                    # clear data of processed sheet
+                try:
+                        # load workbook as data only (otherwise formulae are returned instead of values)
+                    wb = load_workbook(folder+"\\"+workbook, data_only=True)
+                    # create datalist for cell values
                     data = []
-                # set upload number to max+1 for the given workbook
-                sql_update_statement = """
-                UPDATE landing.Worksheets
-                SET upload_number = (
-                    SELECT max(upload_number)+1
-                    FROM landing.Worksheets
-                )
-                WHERE upload_number = 0
-                """
-                self.sql_connection.execute(sql_update_statement)
+                    # iterate over every worksheet within wb
+                    for ws in wb.worksheets:
+                        # generate target range to be extracted from each sheet (ex. A1:C10)
+                        # first cell to scrape from ex. A1
+                        cell_start = 'A1'
+                        # last cell to scrape from ex. KN1000
+                        cell_end = f'{self.target_excel_columns[-1]}{SCRAPER_TOTAL_ROWS}'
+                        # ex. A1:KN1000
+                        cell_range = f'{cell_start}:{cell_end}'
+                        # select rows from Worksheet object
+                        rows = ws[cell_range]
+                        # iterate over every row and add cell value to data list
+                        for row in rows:
+                            data.append([self.set_none_as_null(str(cell.value)) for cell in row])
+                        # create df of worksheet data
+                        df_data = pd.DataFrame(data=data)
+                        df_data.columns = self.target_excel_columns
+                        # create df of metadata
+                        df_meta = pd.DataFrame(
+                            data={
+                                'is_processed':0,
+                                'upload_number':0,
+                                'workbook_name':workbook,
+                                'worksheet_name':ws.title,
+                                'row_n':0,
+                                'source_dir':folder,
+                            },
+                            index=[0]
+                        )
+                        # concat meta and data dfs
+                        df_concat = pd.concat([df_meta, df_data])
+                        # infill NaN cells of df_concat with metadata
+                        df_concat['is_processed'] = 0
+                        df_concat['upload_number'] = 0
+                        df_concat['source_dir'] = folder
+                        df_concat['workbook_name'] = workbook
+                        df_concat['worksheet_name'] = ws.title
+                        df_concat['row_n'] = list(range(df_concat.shape[0]))
+                        df_concat['source_dir'] = folder
+                        # remove 0th (blank generated) row
+                        df_concat = df_concat.iloc[1::, ::]
+                        # send df to sql
+                        df_concat.to_sql(
+                            name='Worksheets',
+                            schema='landing',
+                            index=False,
+                            con=self.sql_connection,
+                            if_exists='append'
+                        )
+                        # clear data of processed sheet
+                        data = []
+                    # set upload number to max+1 for the given workbook
+                    sql_update_statement = """
+                    UPDATE landing.Worksheets
+                    SET upload_number = (
+                        SELECT max(upload_number)+1
+                        FROM landing.Worksheets
+                    )
+                    WHERE upload_number = 0
+                    """
+                    self.sql_connection.execute(sql_update_statement)
+                except IndexError:
+                    print(f"Error: {folder}\\{workbook}")
+                    pass

@@ -37,6 +37,6 @@ def list_parent_and_subdirs(rootdir):
 
 # Scraper settings
 SCRAPER_VALID_FILETYPES = ['xlsx', 'xlsm']
-SCRAPER_TARGET_DIRECTORIES = [r'C:\Users\me\Desktop\test\scraper']
+SCRAPER_TARGET_DIRECTORIES = list_parent_and_subdirs(r'C:\Users\me\Desktop\test')
 SCRAPER_TOTAL_COLUMNS = 300
-SCRAPER_TOTAL_ROWS = 1000
+SCRAPER_TOTAL_ROWS = 4000
